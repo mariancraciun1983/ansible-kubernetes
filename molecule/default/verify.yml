@@ -1,0 +1,24 @@
+---
+- name: Verify
+  hosts: all
+  gather_facts: true
+  environment:
+    KUBECONFIG: /verify_kubeconfig
+  tasks:
+    - name: deploy user config
+      copy:
+        src: "{{ k8s_new_user_certs }}{{ k8s_new_user_name }}/kubeconfig"
+        dest: /verify_kubeconfig
+        mode: 0600
+
+    - name: get cluster nodes
+      command: kubectl get nodes -o=jsonpath='{.items[*].metadata.name}'
+      changed_when: false
+      register: kubernetes_info
+
+    - name: check hosts are nodes
+      assert:
+        that: "hostvars[item]['ansible_hostname'] in kubernetes_info.stdout"
+        quiet: true
+        fail_msg: each host must be present in the nodes list ({{ kubernetes_info.stdout }})
+      with_items: "{{ play_hosts }}"

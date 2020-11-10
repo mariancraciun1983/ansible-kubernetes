@@ -1,0 +1,64 @@
+---
+- name: packages | add dependencies
+  apt:
+    name:
+      - gnupg2
+      - apt-transport-https
+      - ca-certificates
+      - software-properties-common
+    update_cache: true
+    state: present
+
+- name: packages | add apt keys for docker and k8s
+  apt_key:
+    url: "{{ item }}"
+    state: present
+  loop:
+    - https://download.docker.com/linux/ubuntu/gpg
+    - https://packages.cloud.google.com/apt/doc/apt-key.gpg
+
+- name: packages | add repos for docker and k8s
+  apt_repository:
+    repo: "{{ item.repo }}"
+    filename: "{{ item.file }}"
+    state: present
+    update_cache: yes
+  loop:
+    - repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+      file: docker
+    - repo: "deb https://apt.kubernetes.io/ kubernetes-xenial main"
+      file: kubernetes
+
+- name: packages | install dependencies
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+  vars:
+    packages:
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - kubeadm
+    - kubelet
+    - kubectl
+  notify:
+    - restart docker
+    - restart kubelet
+
+- name: packages | pip dependencies
+  pip:
+    executable: pip3
+    name:
+      - openshift
+      - PyYAML
+
+- name: packages | enable docker
+  service:
+    name: docker
+    enabled: true
+
+- name: packages | enable kubelet
+  service:
+    name: kubelet
+    enabled: true

@@ -1,0 +1,21 @@
+_k8s_join_command:
+_k8s_master_envvars: "{{ hostvars | filter_first_hostvars('k8s_role','master') }}"
+
+k8s_cluster_name: k8s
+k8s_cluster_hostname: k8s.example.com
+k8s_cluster_endpoint: https://k8s.example.com:6443
+k8s_cluster_sans: []
+
+k8s_config_swapoff: true
+
+k8s_use_internal_ip: false
+k8s_kubelet_extra_args:
+k8s_kubeinit_extra_args:
+k8s_kubejoin_extra_args:
+k8s_pod_subnet: 10.1.0.0/16
+k8s_services_subnet: 10.2.0.0/16
+
+k8s_new_user_group: users
+# location where to put the certificates of the new users
+k8s_new_user_certs: files/k8s/users/
+k8s_new_user_name:

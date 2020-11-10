@@ -1,0 +1,124 @@
+- name: user | validate new username
+  assert:
+    that:
+      - k8s_new_user_name | regex_search('^[a-zA-Z0-9-_]+$')
+    quiet: yes
+    fail_msg: The new user is not in the right form
+
+- name: user | check for existing user's kubeconfig
+  stat:
+    path: "{{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/kubeconfig"
+  register: user_kubeconfig
+  delegate_to: localhost
+
+- name: user | create user
+  block:
+
+    - name: user | ensure users folder
+      file:
+        path: "{{ k8s_new_user_certs }}/{{ k8s_new_user_name }}"
+        state: directory
+        mode: 0777
+      delegate_to: localhost
+
+    - name: user | generate RSA for user_kubeconfig.stat.exists
+      command: /usr/bin/openssl genrsa -out {{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/{{ k8s_new_user_name }}.pem 2048
+      no_log: yes
+      delegate_to: localhost
+
+    - name: user | generate CSR for user
+      command: >-
+        /usr/bin/openssl req -new
+        -key {{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/{{ k8s_new_user_name }}.pem
+        -out {{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/{{ k8s_new_user_name }}.csr
+        -subj "/CN={{ k8s_new_user_name }}/O={{ k8s_new_user_group }}"
+      register: csr_req_original
+      no_log: yes
+      delegate_to: localhost
+
+    - name: user | convert CSR to base64
+      shell: cat {{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/{{ k8s_new_user_name }}.csr | base64 | tr -d '\n'
+      register: csr_req_base64
+      no_log: yes
+      delegate_to: localhost
+
+    - name: user | extract client-key-data for user
+      shell: cat {{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/{{ k8s_new_user_name }}.pem | base64 | tr -d '\n'
+      register: client_key_data
+      no_log: yes
+      delegate_to: localhost
+
+    - name: user | send CSR to K8s
+      k8s:
+        state: present
+        definition:
+          apiVersion: certificates.k8s.io/v1
+          kind: CertificateSigningRequest
+          metadata:
+            name: user-request-{{ k8s_new_user_name }}
+          spec:
+            groups:
+            - system:authenticated
+            request: "{{ csr_req_base64.stdout }}"
+            signerName: kubernetes.io/kube-apiserver-client
+            usages:
+            - digital signature
+            - key encipherment
+            - client auth
+
+    - name: user | approve the CSR
+      command: kubectl certificate approve user-request-{{ k8s_new_user_name }}
+
+    - name: user | fetch Certificate from CSR
+      k8s_info:
+        kind: CertificateSigningRequest
+        name: user-request-{{ k8s_new_user_name }}
+      register: csr_info
+      no_log: yes
+
+    - name: user | validate approved certificate
+      assert:
+        that: csr_info.resources.0.status.certificate
+        fail_msg: Failed to get certificate or not approved yet
+        quiet: true
+
+    - name: user | add ClusterRoleBinding
+      k8s:
+        state: present
+        definition:
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: ClusterRoleBinding
+          metadata:
+            name: cluster-admins
+          roleRef:
+            apiGroup: rbac.authorization.k8s.io
+            kind: ClusterRole
+            name: cluster-admin
+          subjects:
+          - apiGroup: rbac.authorization.k8s.io
+            kind: User
+            name: "{{ k8s_new_user_name }}"
+
+    - name: user | get Certificate AuthorityData
+      k8s_info:
+        kind: ConfigMap
+        name: cluster-info
+        namespace: kube-public
+      register: cluster_info
+
+    - name: user | set variour k8s config facts
+      set_fact:
+        private_key: "{{ client_key_data.stdout }}"
+        certificate: "{{ csr_info.resources.0.status.certificate }}"
+        cert_auth_data: "{{ cluster_info.resources[0].data.kubeconfig | regex_findall('certificate-authority-data: (.*)')  | first }}"
+        server_data: "{{ k8s_cluster_hostname }}"
+      no_log: yes
+
+    - name: user | generate kubeconfig file for user
+      template:
+        src: kubeconfig.j2
+        dest: "{{ k8s_new_user_certs }}/{{ k8s_new_user_name }}/kubeconfig"
+        mode: 0666
+      delegate_to: localhost
+
+  when: not user_kubeconfig.stat.exists

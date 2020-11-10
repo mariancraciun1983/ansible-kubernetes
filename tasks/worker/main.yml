@@ -1,0 +1,14 @@
+---
+- name: worker | verify worker kubelet
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: node_k8s_conf
+  when: k8s_role == 'worker'
+
+- name: worker | collect join command
+  import_tasks: worker/join-command.yml
+  when: k8s_role == 'master'
+
+- name: worker | join worker
+  import_tasks: worker/join-worker.yml
+  when: k8s_role == 'worker' and not node_k8s_conf.stat.exists

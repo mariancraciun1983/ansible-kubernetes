@@ -1,0 +1,31 @@
+- name: config | swap
+  block:
+
+    - name: config | swapoff
+      command: swapoff -a
+      when: ansible_swaptotal_mb > 0
+
+    - name: config | remove swapfile from /etc/fstab
+      mount:
+        name: "{{ item }}"
+        fstype: swap
+        state: absent
+      with_items:
+        - swap
+        - none
+
+  when: k8s_config_swapoff|bool
+
+- name: config | configure kubelet defaults
+  set_fact:
+    _kubectl_extra_args: >-
+      {{ k8s_kubelet_extra_args }}
+      {% if k8s_use_internal_ip|bool %} --node-ip={{ internal_ip }} {% endif %}
+
+- name: config | configure kubelet defaults
+  lineinfile:
+    path: /etc/default/kubelet
+    line: KUBELET_EXTRA_ARGS={{ _kubectl_extra_args }}
+    create: yes
+    mode: 0644
+  notify: restart kubelet

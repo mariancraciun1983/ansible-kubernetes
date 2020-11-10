@@ -1,0 +1,59 @@
+- name: master | enable docker
+  service:
+    name: docker
+    state: started
+
+- name: master | enable kubelet
+  service:
+    name: kubelet
+    state: started
+
+- name: master | check if master admin.conf exists
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: node_k8s_conf
+
+- name: master | configure kubelet defaults
+  set_fact:
+    _kubeinit_extra_args: >-
+      {{ k8s_kubeinit_extra_args }}
+      {% if k8s_use_internal_ip|bool %}
+      --apiserver-advertise-address={{ internal_ip }}
+      --control-plane-endpoint={{ internal_ip }}
+      {% endif %}
+
+- name: master | configure master
+  block:
+    - name: master | initialize the Kubernetes cluster using kubeadm
+      command: >-
+        kubeadm init
+          --node-name={{ ansible_hostname }}
+          --pod-network-cidr={{ k8s_pod_subnet }}
+          --service-cidr={{ k8s_services_subnet }}
+          --apiserver-cert-extra-sans={{ k8s_cluster_sans|join(',') }}
+          --skip-token-print
+          {{ _kubeinit_extra_args }}
+      register: kubeadm_out
+      until: kubeadm_out.rc == 0 and kubeadm_out.stdout.find("has initialized successfully") != -1
+      retries: 2
+      delay: 10
+
+    - name: master | ensures .kube dir exists
+      file:
+        path: $HOME/.kube/
+        state: directory
+        mode: 0600
+
+    - name: master | copy admin.conf to root's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: $HOME/.kube/config
+        remote_src: yes
+        mode: 0600
+
+  when: not node_k8s_conf.stat.exists
+
+- name: master | wait for kube api to become available
+  wait_for:
+    port: 6443
+    timeout: 60

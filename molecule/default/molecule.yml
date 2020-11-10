@@ -1,0 +1,87 @@
+---
+dependency:
+  name: galaxy
+
+driver:
+  name: docker
+
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+
+platforms:
+  - name: focal
+    image: geerlingguy/docker-ubuntu2004-ansible:latest
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    privileged: true
+    pre_build_image: true
+    docker_networks:
+      - name: molecule_k8s
+        ipam_config:
+          - subnet: "10.30.50.0/24"
+    etc_hosts: >
+      {
+        "bionic" : "10.30.50.12",
+        "k8s.example.com": "10.30.50.11",
+        "master.example.com": "10.30.50.11"
+      }
+    networks:
+      - name: molecule_k8s
+        ipv4_address: "10.30.50.11"
+
+  - name: bionic
+    image: geerlingguy/docker-ubuntu1804-ansible:latest
+    tmpfs:
+      - /run
+      - /tmp
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:ro
+      - /var/lib/docker
+    capabilities:
+      - SYS_ADMIN
+    command: "/lib/systemd/systemd"
+    privileged: true
+    pre_build_image: true
+    etc_hosts: >
+      {
+        "focal" : "10.30.50.11",
+        "k8s.example.com": "10.30.50.11",
+        "master.example.com": "10.30.50.11"
+      }
+    networks:
+      - name: molecule_k8s
+        ipv4_address: "10.30.50.12"
+
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        install_python3: true
+        k8s_config_swapoff: false
+        k8s_kubelet_extra_args: "--fail-swap-on=false --cgroup-driver=cgroupfs"
+        k8s_kubeinit_extra_args: "--ignore-preflight-errors=all"
+        k8s_kubejoin_extra_args: "--ignore-preflight-errors=all"
+        k8s_cluster_sans:
+            - k8s.example.com
+            - master.example.com
+        k8s_new_user_name: admin
+
+        k8s_new_user_certs: files/k8s/users/
+
+    host_vars:
+      focal:
+        k8s_role: master
+      bionic:
+        k8s_role: worker
+verifier:
+  name: ansible

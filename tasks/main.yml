@@ -1,0 +1,27 @@
+---
+- name: packages
+  import_tasks: packages.yml
+  tags:
+    - packages
+
+- name: config
+  import_tasks: config.yml
+  tags:
+    - config
+
+- name: master
+  import_tasks: master.yml
+  tags:
+    - master
+  when: k8s_role == 'master'
+
+- name: worker
+  import_tasks: worker/main.yml
+  tags:
+    - worker
+
+- name: user.yml
+  import_tasks: user.yml
+  tags:
+    - user
+  when: k8s_new_user_name and k8s_role == 'master'

@@ -1,0 +1,28 @@
+---
+- name: worker | verify join command exists
+  assert:
+    that:
+      - _k8s_master_envvars['_k8s_join_command'] is defined
+      - _k8s_master_envvars['_k8s_join_command'] | length > 0
+    quiet: yes
+    fail_msg: the join command was supposed to be available by this point
+
+- name: worker | enable docker
+  service:
+    name: docker
+    state: started
+
+- name: worker | enable kubelet
+  service:
+    name: kubelet
+    state: started
+
+- name: worker | join the node to cluster
+  command: >-
+    {{ _k8s_master_envvars['_k8s_join_command'] }}
+    {{ k8s_kubejoin_extra_args }}
+  register: join_out
+  until: join_out.stdout.find("This node has joined the cluster") != -1
+  changed_when: join_out.stdout.find("This node has joined the cluster") != -1
+  retries: 1
+  delay: 120
