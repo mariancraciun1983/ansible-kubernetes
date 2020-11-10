@@ -7,12 +7,12 @@
     quiet: yes
     fail_msg: the join command was supposed to be available by this point
 
-- name: worker | enable docker
+- name: worker | start docker
   service:
     name: docker
     state: started
 
-- name: worker | enable kubelet
+- name: worker | start kubelet
   service:
     name: kubelet
     state: started

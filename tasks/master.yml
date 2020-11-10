@@ -1,9 +1,9 @@
-- name: master | enable docker
+- name: master | start docker
   service:
     name: docker
     state: started
 
-- name: master | enable kubelet
+- name: master | start kubelet
   service:
     name: kubelet
     state: started

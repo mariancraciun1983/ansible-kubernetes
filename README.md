@@ -2,14 +2,14 @@
 <br />
 
 <div align="center">
-  <a href="https://travis-ci.com/mariancraciun1983/ansible-rabbitmq-ha">
-    <img src="https://travis-ci.com/mariancraciun1983/ansible-rabbitmq-ha.svg?branch=master" alt="Build Status" />
+  <a href="https://travis-ci.com/mariancraciun1983/ansible-kubernetes">
+    <img src="https://travis-ci.com/mariancraciun1983/ansible-kubernetes.svg?branch=master" alt="Build Status" />
   </a>
-  <a href="https://galaxy.ansible.com/mariancraciun1983/rabbitmq_ha">
-    <img src="https://img.shields.io/ansible/role/51705" alt="Ansible Galaxy" />
+  <a href="https://galaxy.ansible.com/mariancraciun1983/kubernetes_cluster">
+    <img src="https://img.shields.io/ansible/role/51725" alt="Ansible Galaxy" />
   </a>
-  <a href="https://galaxy.ansible.com/mariancraciun1983/rabbitmq_ha">
-    <img src="https://img.shields.io/ansible/quality/51705" alt="Ansible Quality Score" />
+  <a href="https://galaxy.ansible.com/mariancraciun1983/kubernetes_cluster">
+    <img src="https://img.shields.io/ansible/quality/51725" alt="Ansible Quality Score" />
   </a>
   <a href="https://opensource.org/licenses/MIT">
     <img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License" />

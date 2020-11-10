@@ -5,6 +5,6 @@
   failed_when: join_command_out.stdout_lines | length == 0
   changed_when: no
 
-- name: set version
+- name: master | set join command var
   set_fact:
     _k8s_join_command: "{{ join_command_out.stdout_lines[0] }}"
