@@ -3,7 +3,8 @@ galaxy_info:
   role_name: kubernetes_cluster
   author: Marian Craciun
   description: >-
-    Ansible role to install and configure a kubernetes cluster, and configure admin users
+    Install and configure a kubernetes cluster
+    with Role-based access control and user creation
   license: MIT
 
   min_ansible_version: 2.7
